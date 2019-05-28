@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using OpenTK;
+using System.Numerics;
 
 
 namespace InputLib
@@ -279,7 +279,7 @@ namespace InputLib
 
 			if(mbMovedThisFrame)
 			{
-				moveVec.Normalize();
+				moveVec	=Vector3.Normalize(moveVec);
 
 				actionMult	/=multCount;
 
