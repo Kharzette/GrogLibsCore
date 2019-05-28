@@ -2,7 +2,7 @@
 using System.Text;
 using System.Diagnostics;
 using System.Collections.Generic;
-using OpenTK.Input;
+using SDL2;
 
 
 namespace InputLib
@@ -24,9 +24,9 @@ namespace InputLib
 
 		internal class KeyHeldInfo
 		{
-			internal long	mInitialPressTime;
-			internal long	mTimeHeld;
-			internal Key	mKey;
+			internal long				mInitialPressTime;
+			internal long				mTimeHeld;
+			internal SDL.SDL_Keycode	mKey;
 
 
 			internal KeyHeldInfo(){}
@@ -87,7 +87,7 @@ namespace InputLib
 		}
 
 
-		void AddHeldKey(Key key, long ts, bool bUp)
+		void AddHeldKey(SDL.SDL_Keycode key, long ts, bool bUp)
 		{
 			bool	bFoundHeld	=false;
 			foreach(KeyHeldInfo khi in mKeysHeld)
@@ -146,52 +146,72 @@ namespace InputLib
 		{
 			long	ts	=Stopwatch.GetTimestamp();
 
-			//check existing helds
-			KeyboardState	kbs	=Keyboard.GetState();
-
-			List<KeyHeldInfo>	up	=new List<KeyHeldInfo>();
-
+			//update timing of existing helds
 			foreach(KeyHeldInfo khi in mKeysHeld)
 			{
 				//update timing
 				khi.mTimeHeld	=ts - khi.mInitialPressTime;
-
-				if(kbs.IsKeyDown(khi.mKey))
-				{
-					//still held
-				}
-				else
-				{
-					up.Add(khi);	//released
-				}
 			}
 
-			//move into up
-			foreach(KeyHeldInfo khi in up)
-			{
-				mKeysHeld.Remove(khi);
-				mKeysUp.Add(khi);
-			}
+			SDL.SDL_Event	ev;
 
-			//check for new helds
-			foreach(ActionMapping am in mActionMap)
+			//grab input related events
+			while(SDL.SDL_PollEvent(out ev) != 0)
 			{
-				bool	bAllDown	=true;
-				foreach(Key k in am.mKeys)
+				switch(ev.type)
 				{
-					if(!kbs.IsKeyDown(k))
-					{
-						bAllDown	=false;
+					case	SDL.SDL_EventType.SDL_CONTROLLERAXISMOTION:
 						break;
-					}
-				}
+					case	SDL.SDL_EventType.SDL_CONTROLLERBUTTONDOWN:
+						break;
+					case	SDL.SDL_EventType.SDL_CONTROLLERBUTTONUP:
+						break;
+					case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEADDED:
+						break;
+					case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEREMAPPED:
+						break;
+					case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEREMOVED:
+						break;
+					case	SDL.SDL_EventType.SDL_JOYAXISMOTION:
+						break;
+					case	SDL.SDL_EventType.SDL_JOYBALLMOTION:
+						break;
+					case	SDL.SDL_EventType.SDL_JOYBUTTONDOWN:
+						break;
+					case	SDL.SDL_EventType.SDL_JOYBUTTONUP:
+						break;
+					case	SDL.SDL_EventType.SDL_JOYDEVICEADDED:
+						break;
+					case	SDL.SDL_EventType.SDL_JOYDEVICEREMOVED:
+						break;
+					case	SDL.SDL_EventType.SDL_JOYHATMOTION:
+						break;
 
-				if(bAllDown)				
-				{
-					foreach(Key k in am.mKeys)
-					{
-						AddHeldKey(k, ts, false);
-					}
+					case	SDL.SDL_EventType.SDL_KEYDOWN:
+						AddHeldKey(ev.key.keysym.sym, ts, false);
+						break;
+
+					case	SDL.SDL_EventType.SDL_KEYUP:
+						AddHeldKey(ev.key.keysym.sym, ts, true);
+						break;
+
+					case	SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN:
+						break;
+					case	SDL.SDL_EventType.SDL_MOUSEBUTTONUP:
+						break;
+					case	SDL.SDL_EventType.SDL_MOUSEMOTION:
+						break;
+					case	SDL.SDL_EventType.SDL_MOUSEWHEEL:
+						break;
+					case	SDL.SDL_EventType.SDL_TEXTEDITING:
+						break;
+					case	SDL.SDL_EventType.SDL_TEXTINPUT:
+						break;
+
+					//not input related, throw it back
+					default:
+						SDL.SDL_PushEvent(ref ev);
+						break;
 				}
 			}
 		}
@@ -209,9 +229,9 @@ namespace InputLib
 		}
 
 
-		static bool ListsMatch(List<Key> A, List<Key> B)
+		static bool ListsMatch(List<SDL.SDL_Keycode> A, List<SDL.SDL_Keycode> B)
 		{
-			foreach(Key k in A)
+			foreach(SDL.SDL_Keycode k in A)
 			{
 				if(!B.Contains(k))
 				{
@@ -222,7 +242,7 @@ namespace InputLib
 		}
 
 
-		bool IsActionMapped(List<Key> keys, out ActionMapping mapped)
+		bool IsActionMapped(List<SDL.SDL_Keycode> keys, out ActionMapping mapped)
 		{
 			mapped	=null;
 			foreach(ActionMapping am in mActionMap)
@@ -238,7 +258,7 @@ namespace InputLib
 
 
 		public void MapAction(Enum action,
-			ActionTypes mode, List<Key> keys)
+			ActionTypes mode, List<SDL.SDL_Keycode> keys)
 		{
 			Debug.Assert(mode != ActionTypes.Toggle);
 
@@ -255,7 +275,7 @@ namespace InputLib
 
 				amap.mAction		=action;
 				amap.mActionType	=mode;
-				amap.mKeys			=new List<Key>(keys);
+				amap.mKeys			=new List<SDL.SDL_Keycode>(keys);
 
 				mActionMap.Add(amap);
 			}
@@ -263,7 +283,7 @@ namespace InputLib
 
 
 		public void MapToggleAction(Enum action,
-			Enum actionOff, List<Key> keys)
+			Enum actionOff, List<SDL.SDL_Keycode> keys)
 		{
 			ActionMapping	am;
 			if(IsActionMapped(keys, out am))
@@ -280,14 +300,14 @@ namespace InputLib
 				amap.mAction		=action;
 				amap.mActionOff		=actionOff;
 				amap.mActionType	=ActionTypes.Toggle;
-				amap.mKeys			=new List<Key>(keys);
+				amap.mKeys			=new List<SDL.SDL_Keycode>(keys);
 
 				mActionMap.Add(amap);
 			}
 		}
 
 
-		public void UnMapAction(List<Key> keys)
+		public void UnMapAction(List<SDL.SDL_Keycode> keys)
 		{
 			ActionMapping	am;
 			if(IsActionMapped(keys, out am))
@@ -299,7 +319,7 @@ namespace InputLib
 
 		static bool IsActionInList(ActionMapping am, List<KeyHeldInfo> theList)
 		{
-			foreach(Key k in am.mKeys)
+			foreach(SDL.SDL_Keycode k in am.mKeys)
 			{
 				bool	bFound	=false;
 				foreach(KeyHeldInfo khi in theList)
@@ -323,7 +343,7 @@ namespace InputLib
 		static long	GetMinTimeActionListed(ActionMapping am, List<KeyHeldInfo> theList)
 		{
 			long	minTime	=long.MaxValue;
-			foreach(Key k in am.mKeys)
+			foreach(SDL.SDL_Keycode k in am.mKeys)
 			{
 				foreach(KeyHeldInfo khi in theList)
 				{

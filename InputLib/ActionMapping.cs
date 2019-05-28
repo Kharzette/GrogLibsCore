@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using OpenTK.Input;
+using SDL2;
 
 
 namespace InputLib
@@ -16,9 +16,9 @@ namespace InputLib
 
 	internal class ActionMapping
 	{
-		internal ActionTypes	mActionType;
-		internal Enum			mAction;	//user specified per game?
-		internal Enum			mActionOff;	//for toggle off state
-		internal List<Key>		mKeys;
+		internal ActionTypes			mActionType;
+		internal Enum					mAction;	//user specified per game?
+		internal Enum					mActionOff;	//for toggle off state
+		internal List<SDL.SDL_Keycode>	mKeys;
 	}
 }
