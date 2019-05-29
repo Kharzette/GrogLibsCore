@@ -112,6 +112,7 @@ namespace InputLib
 							mKeysUp.Add(khi);
 						}
 						mKeysHeld.Remove(khi);
+						break;
 					}
 				}
 			}
@@ -152,68 +153,122 @@ namespace InputLib
 				//update timing
 				khi.mTimeHeld	=ts - khi.mInitialPressTime;
 			}
+		}
 
-			SDL.SDL_Event	ev;
 
-			//grab input related events
-			while(SDL.SDL_PollEvent(out ev) != 0)
+		public void ProcessInputEvent(ref SDL.SDL_Event ev)
+		{
+			long	ts	=Stopwatch.GetTimestamp();
+			switch(ev.type)
 			{
-				switch(ev.type)
-				{
-					case	SDL.SDL_EventType.SDL_CONTROLLERAXISMOTION:
-						break;
-					case	SDL.SDL_EventType.SDL_CONTROLLERBUTTONDOWN:
-						break;
-					case	SDL.SDL_EventType.SDL_CONTROLLERBUTTONUP:
-						break;
-					case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEADDED:
-						break;
-					case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEREMAPPED:
-						break;
-					case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEREMOVED:
-						break;
-					case	SDL.SDL_EventType.SDL_JOYAXISMOTION:
-						break;
-					case	SDL.SDL_EventType.SDL_JOYBALLMOTION:
-						break;
-					case	SDL.SDL_EventType.SDL_JOYBUTTONDOWN:
-						break;
-					case	SDL.SDL_EventType.SDL_JOYBUTTONUP:
-						break;
-					case	SDL.SDL_EventType.SDL_JOYDEVICEADDED:
-						break;
-					case	SDL.SDL_EventType.SDL_JOYDEVICEREMOVED:
-						break;
-					case	SDL.SDL_EventType.SDL_JOYHATMOTION:
-						break;
+				case	SDL.SDL_EventType.SDL_CONTROLLERAXISMOTION:
+					break;
+				case	SDL.SDL_EventType.SDL_CONTROLLERBUTTONDOWN:
+					break;
+				case	SDL.SDL_EventType.SDL_CONTROLLERBUTTONUP:
+					break;
+				case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEADDED:
+					break;
+				case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEREMAPPED:
+					break;
+				case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEREMOVED:
+					break;
+				case	SDL.SDL_EventType.SDL_JOYAXISMOTION:
+					break;
+				case	SDL.SDL_EventType.SDL_JOYBALLMOTION:
+					break;
+				case	SDL.SDL_EventType.SDL_JOYBUTTONDOWN:
+					break;
+				case	SDL.SDL_EventType.SDL_JOYBUTTONUP:
+					break;
+				case	SDL.SDL_EventType.SDL_JOYDEVICEADDED:
+					break;
+				case	SDL.SDL_EventType.SDL_JOYDEVICEREMOVED:
+					break;
+				case	SDL.SDL_EventType.SDL_JOYHATMOTION:
+					break;
 
-					case	SDL.SDL_EventType.SDL_KEYDOWN:
-						AddHeldKey(ev.key.keysym.sym, ts, false);
-						break;
+				case	SDL.SDL_EventType.SDL_KEYDOWN:
+					AddHeldKey(ev.key.keysym.sym, ts, false);
+					Console.WriteLine("KeyDown");
+					break;
 
-					case	SDL.SDL_EventType.SDL_KEYUP:
-						AddHeldKey(ev.key.keysym.sym, ts, true);
-						break;
+				case	SDL.SDL_EventType.SDL_KEYUP:
+					AddHeldKey(ev.key.keysym.sym, ts, true);
+					Console.WriteLine("KeyUp");
+					break;
 
-					case	SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN:
-						break;
-					case	SDL.SDL_EventType.SDL_MOUSEBUTTONUP:
-						break;
-					case	SDL.SDL_EventType.SDL_MOUSEMOTION:
-						break;
-					case	SDL.SDL_EventType.SDL_MOUSEWHEEL:
-						break;
-					case	SDL.SDL_EventType.SDL_TEXTEDITING:
-						break;
-					case	SDL.SDL_EventType.SDL_TEXTINPUT:
-						break;
+				case	SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN:
+					break;
+				case	SDL.SDL_EventType.SDL_MOUSEBUTTONUP:
+					break;
+				case	SDL.SDL_EventType.SDL_MOUSEMOTION:
+					break;
+				case	SDL.SDL_EventType.SDL_MOUSEWHEEL:
+					break;
+				case	SDL.SDL_EventType.SDL_TEXTEDITING:
+					break;
+				case	SDL.SDL_EventType.SDL_TEXTINPUT:
+					break;
 
-					//not input related, throw it back
-					default:
-						SDL.SDL_PushEvent(ref ev);
-						break;
-				}
+				//not input related
+				default:
+					Console.WriteLine("Non input event passed to InputLib!");
+					break;
 			}
+		}
+
+
+		public bool	IsInputEvent(ref SDL.SDL_Event ev)
+		{
+			switch(ev.type)
+			{
+				case	SDL.SDL_EventType.SDL_CONTROLLERAXISMOTION:
+					return	true;
+				case	SDL.SDL_EventType.SDL_CONTROLLERBUTTONDOWN:
+					return	true;
+				case	SDL.SDL_EventType.SDL_CONTROLLERBUTTONUP:
+					return	true;
+				case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEADDED:
+					return	true;
+				case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEREMAPPED:
+					return	true;
+				case	SDL.SDL_EventType.SDL_CONTROLLERDEVICEREMOVED:
+					return	true;
+				case	SDL.SDL_EventType.SDL_JOYAXISMOTION:
+					return	true;
+				case	SDL.SDL_EventType.SDL_JOYBALLMOTION:
+					return	true;
+				case	SDL.SDL_EventType.SDL_JOYBUTTONDOWN:
+					return	true;
+				case	SDL.SDL_EventType.SDL_JOYBUTTONUP:
+					return	true;
+				case	SDL.SDL_EventType.SDL_JOYDEVICEADDED:
+					return	true;
+				case	SDL.SDL_EventType.SDL_JOYDEVICEREMOVED:
+					return	true;
+				case	SDL.SDL_EventType.SDL_JOYHATMOTION:
+					return	true;
+				case	SDL.SDL_EventType.SDL_KEYDOWN:
+					return	true;
+				case	SDL.SDL_EventType.SDL_KEYUP:
+					return	true;
+				case	SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN:
+					return	true;
+				case	SDL.SDL_EventType.SDL_MOUSEBUTTONUP:
+					return	true;
+				case	SDL.SDL_EventType.SDL_MOUSEMOTION:
+					return	true;
+				case	SDL.SDL_EventType.SDL_MOUSEWHEEL:
+					return	true;
+				case	SDL.SDL_EventType.SDL_TEXTEDITING:
+					return	true;
+				case	SDL.SDL_EventType.SDL_TEXTINPUT:
+					return	true;
+				default:
+					return	false;
+			}
+			return	false;
 		}
 
 
@@ -234,6 +289,14 @@ namespace InputLib
 			foreach(SDL.SDL_Keycode k in A)
 			{
 				if(!B.Contains(k))
+				{
+					return	false;
+				}
+			}
+
+			foreach(SDL.SDL_Keycode k in B)
+			{
+				if(!A.Contains(k))
 				{
 					return	false;
 				}
@@ -282,9 +345,14 @@ namespace InputLib
 		}
 
 
+		//toggles can only be a single key
 		public void MapToggleAction(Enum action,
-			Enum actionOff, List<SDL.SDL_Keycode> keys)
+			Enum actionOff, SDL.SDL_Keycode key)
 		{
+			List<SDL.SDL_Keycode>	keys	=new List<SDL.SDL_Keycode>();
+
+			keys.Add(key);
+
 			ActionMapping	am;
 			if(IsActionMapped(keys, out am))
 			{
@@ -337,6 +405,23 @@ namespace InputLib
 				}
 			}
 			return	true;
+		}
+
+
+		//is any element of the action's keys in the list?
+		static bool IsActionPartInList(ActionMapping am, List<KeyHeldInfo> theList)
+		{
+			foreach(SDL.SDL_Keycode k in am.mKeys)
+			{
+				foreach(KeyHeldInfo khi in theList)
+				{
+					if(khi.mKey == k)
+					{
+						return	true;
+					}
+				}
+			}
+			return	false;
 		}
 
 
@@ -426,7 +511,7 @@ namespace InputLib
 						Debug.Assert(false);
 					}
 				}
-				else if(IsActionInList(am, mKeysUp))
+				else if(IsActionPartInList(am, mKeysUp))
 				{
 					long	timeHeld	=GetMinTimeActionListed(am, mKeysUp);
 					if(am.mActionType == ActionTypes.ContinuousHold)
