@@ -286,17 +286,14 @@ namespace InputLib
 
 		static bool ListsMatch(List<SDL.SDL_Keycode> A, List<SDL.SDL_Keycode> B)
 		{
+			if(A.Count != B.Count)
+			{
+				return	false;
+			}
+			
 			foreach(SDL.SDL_Keycode k in A)
 			{
 				if(!B.Contains(k))
-				{
-					return	false;
-				}
-			}
-
-			foreach(SDL.SDL_Keycode k in B)
-			{
-				if(!A.Contains(k))
 				{
 					return	false;
 				}
