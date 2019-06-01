@@ -1,0 +1,3 @@
+[submodule "glfw-net"]
+	path = glfw-net
+	url = git@github.com:ForeverZer0/glfw-net.git

@@ -5,7 +5,7 @@
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../SDL2-CS/SDL2-CS.Core.csproj"/>
+    <ProjectReference Include="../glfw-net/GLFW.NET/GLFW.NET.csproj"/>
     <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
   </ItemGroup>
 </Project>
