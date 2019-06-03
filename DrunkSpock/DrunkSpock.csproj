@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../glfw-net/GLFW.NET/GLFW.NET.csproj"/>
+    <ProjectReference Include="../VulkanCore/Src/VulkanCore.csproj"/>	
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Shaders/*.spv">
+	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	</Content>
+  </ItemGroup>
+</Project>
