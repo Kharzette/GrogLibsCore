@@ -156,7 +156,7 @@ namespace InputLib
 		}
 
 
-		public void ProcessKeyEvent(Keys key, InputState state, ModiferKeys mods)
+		public void ProcessKeyEvent(Keys key, InputState state, ModifierKeys mods)
 		{
 			long	ts	=Stopwatch.GetTimestamp();
 

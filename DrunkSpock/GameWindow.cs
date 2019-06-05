@@ -108,13 +108,15 @@ namespace DrunkSpock
 			x	+=xCoords[monitorIndex];
 			y	+=yCoords[monitorIndex];
 
+			Console.WriteLine(Glfw.VersionString);
+
 			Glfw.SetWindowPosition(mWnd, x, y);
 
 			//create window surface
 			IntPtr	surfaceHandle;
 
 			Result	result	=(Result)Vulkan.CreateWindowSurface(
-				ds.GetInstance().Handle, mWnd, IntPtr.Zero, out surfaceHandle);
+				ds.GetInstance().GetInstance().Handle, mWnd, IntPtr.Zero, out surfaceHandle);
 			if(result != Result.Success)
 			{
 				ds.ErrorSpew("Window surface creation failed: " + result.ToString());
@@ -125,7 +127,7 @@ namespace DrunkSpock
 
 			AllocationCallbacks?	superAnnoyingParameter	=null;
 
-			mSurface	=new SurfaceKhr(ds.GetInstance(),
+			mSurface	=new SurfaceKhr(ds.GetInstance().GetInstance(),
 				ref superAnnoyingParameter, surfaceHandle.ToInt64());
 
 			mLastFrame	=Stopwatch.GetTimestamp();
@@ -211,7 +213,7 @@ namespace DrunkSpock
 
 
 		void KeyCB(IntPtr window, Keys key, int scanCode,
-			InputState state, ModiferKeys mods)
+			InputState state, ModifierKeys mods)
 		{
 /*			Console.WriteLine("wnd: " + window + ", key: " + key +
 				", scanCode: " + scanCode + ", InputState: "

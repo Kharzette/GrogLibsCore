@@ -12,7 +12,7 @@ using INST	=VulkanCore.Instance;
 
 namespace DrunkSpock
 {
-	internal class Instance
+	public class Instance
 	{
 		INST	mInstance;
 

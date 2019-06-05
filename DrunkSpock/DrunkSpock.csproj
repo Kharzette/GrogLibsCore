@@ -2,11 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <GenerateFullPaths>true</GenerateFullPaths>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../glfw-net/GLFW.NET/GLFW.NET.csproj"/>
     <ProjectReference Include="../VulkanCore/Src/VulkanCore.csproj"/>	
+	<ProjectReference Include="../UtilityLib/UtilityLib.csproj"/>
+	<ProjectReference Include="../InputLib/InputLib.csproj"/>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Shaders/*.spv">
