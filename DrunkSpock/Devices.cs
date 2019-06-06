@@ -43,6 +43,9 @@ namespace DrunkSpock
 		//queue names
 		Dictionary<string, Queue>	mQueueNames		=new Dictionary<string, Queue>();
 
+		//command stuff
+		Dictionary<string, CommandPool>	mCommandPools	=new Dictionary<string, CommandPool>();
+
 		//swap chain stuff
 		Extent2D		mSwapExtent;
 		SwapchainKhr	mSwapChain;
@@ -197,6 +200,11 @@ namespace DrunkSpock
 			Queue	q	=dv.GetQueue(famIndex, qIndex);
 
 			mQueueNames.Add(qName, q);
+
+			//make a command pool for this queue
+			CommandPoolCreateInfo	cpci	=new CommandPoolCreateInfo(
+				famIndex, CommandPoolCreateFlags.None);
+			mCommandPools.Add(qName, dv.CreateCommandPool(cpci));
 
 			return	true;
 		}
