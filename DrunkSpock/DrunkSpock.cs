@@ -15,6 +15,7 @@ namespace DrunkSpock
     public class DrunkSpock
     {
 		Instance	mInstance;
+		SurfaceKhr	mSurface;
 
 		DebugReportCallbackExt	mDebugCB;
 
@@ -26,11 +27,11 @@ namespace DrunkSpock
 		const string	EngineName		="GrogLibs";
 
 
-		//temporary while converting from sample stuff
-		public Instance	GetInstance()
+		internal Instance	GetInstance()
 		{
 			return	mInstance;
 		}
+
 
 		public bool InitVulkan()
 		{
@@ -63,11 +64,45 @@ namespace DrunkSpock
 		}
 
 
+		internal SurfaceKhr GetSurface()
+		{
+			return	mSurface;
+		}
+
+
+		internal void CreateWindowSurface(Window wnd)
+		{
+			//create window surface
+			IntPtr	surfaceHandle;
+
+			Result	result	=(Result)Vulkan.CreateWindowSurface(
+				mInstance.GetInstance().Handle, wnd,
+				IntPtr.Zero, out surfaceHandle);
+
+			if(result != Result.Success)
+			{
+				ErrorSpew("Window surface creation failed: " + result.ToString());
+				return;
+			}
+
+			AllocationCallbacks?	superAnnoyingParameter	=null;
+
+			mSurface	=new SurfaceKhr(mInstance.GetInstance(),
+				ref superAnnoyingParameter, surfaceHandle.ToInt64());
+
+		}
+
+
 		public void Destroy()
 		{
 			if(mDebugCB != null)
 			{
 				mDebugCB.Dispose();
+			}
+
+			if(mSurface != null)
+			{
+				mSurface.Dispose();
 			}
 
 			if(mInstance != null)
@@ -94,31 +129,5 @@ namespace DrunkSpock
 
 			return	drci.Flags.HasFlag(DebugReportFlagsExt.Error);
 		}
-
-
-
-/*
-			QueueFamilyProperties[]	qfps	=devs[0].GetQueueFamilyProperties();
-			bool	bFound	=false;
-			int		graphicsIndex	=0;
-			for(int i=0;i < qfps.Length;i++)
-			{
-				if((qfps[i].QueueFlags & Queues.Graphics) != 0)
-				{
-					bFound			=true;
-					graphicsIndex	=i;
-					break;
-				}
-			}
-
-			if(!bFound)
-			{
-				Console.WriteLine("Gobliny gpu graphics bit...");
-				gameWnd.Destroy();
-				vkInst.Dispose();
-				return;
-			}
-
-		}*/
     }
 }

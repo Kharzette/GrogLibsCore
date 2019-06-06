@@ -43,7 +43,7 @@ namespace DrunkSpock
 		//queue names
 		Dictionary<string, Queue>	mQueueNames		=new Dictionary<string, Queue>();
 
-		//command stuff
+		//command stuff keyed on queue name
 		Dictionary<string, CommandPool>	mCommandPools	=new Dictionary<string, CommandPool>();
 
 		//swap chain stuff
@@ -54,9 +54,63 @@ namespace DrunkSpock
 		internal event EventHandler	eErrorSpam;
 
 
-		public Devices(Instance inst, SurfaceKhr surf)
+		public Devices(DrunkSpock spock)
 		{
-			ExaminePhysicalDevices(inst, surf);			
+			ExaminePhysicalDevices(spock.GetInstance(), spock.GetSurface());			
+		}
+
+
+		internal CommandPool GetCommandPool(string queueName)
+		{
+			return	mCommandPools[queueName];
+		}
+
+
+		internal int AcquireNextImage(Semaphore sem)
+		{
+			int	imageIndex	=mSwapChain.AcquireNextImage(-1, sem);
+
+			return	imageIndex;
+		}
+
+
+		internal void QueuePresent(Semaphore sem,
+				int imageIndex, string presQueueName)
+		{
+			PresentInfoKhr	pik	=new PresentInfoKhr();
+			pik.WaitSemaphores	=new long[1] { sem.Handle };
+			pik.Swapchains		=new long[1] { mSwapChain.Handle };
+			pik.ImageIndices	=new int[1] { imageIndex };
+
+			mQueueNames[presQueueName].PresentKhr(pik);
+		}
+
+
+		public void Destroy()
+		{
+			foreach(KeyValuePair<string, Device> dev in mLogicals)
+			{
+				dev.Value.Dispose();
+			}
+			mLogicals.Clear();	//queues are cleaned up automagically
+		}
+
+
+		internal void SubmitToQueue(SubmitInfo si, string queueName)
+		{
+			SubmitToQueue(new SubmitInfo[] { si }, queueName);
+		}
+
+
+		public void WaitIdle(string deviceName)
+		{
+			mLogicals[deviceName].WaitIdle();
+		}
+
+
+		internal void SubmitToQueue(SubmitInfo []sis, string queueName)
+		{
+			mQueueNames[queueName].Submit(sis);
 		}
 
 
@@ -129,7 +183,7 @@ namespace DrunkSpock
 			return	null;
 		}
 
-
+		
 		public bool CreateLogicalDevice(string name, int physIndex,
 			List<DeviceQueueCreateInfo> queues, List<string> extensions,
 			Nullable<PhysicalDeviceFeatures> features)
@@ -210,11 +264,12 @@ namespace DrunkSpock
 		}
 
 
-		public bool CreateSwapChain(string logName, SurfaceKhr surf,
+		public bool CreateSwapChain(string logName, DrunkSpock spock,
 			int extentX, int extentY)
 		{
 			Device			dv		=mLogicals[logName];
 			PhysicalDevice	phys	=dv.Parent;
+			SurfaceKhr		surf	=spock.GetSurface();
 
 			SurfaceCapabilitiesKhr	surfCaps		=phys.GetSurfaceCapabilitiesKhr(surf);
 			SurfaceFormatKhr		[]surfFormats	=phys.GetSurfaceFormatsKhr(surf);

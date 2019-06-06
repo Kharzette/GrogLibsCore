@@ -18,7 +18,6 @@ namespace DrunkSpock
 	public class GameWindow
 	{
 		Window		mWnd;
-		SurfaceKhr	mSurface;
 
 		Input	mAttachedInput;
 
@@ -112,23 +111,7 @@ namespace DrunkSpock
 
 			Glfw.SetWindowPosition(mWnd, x, y);
 
-			//create window surface
-			IntPtr	surfaceHandle;
-
-			Result	result	=(Result)Vulkan.CreateWindowSurface(
-				ds.GetInstance().GetInstance().Handle, mWnd, IntPtr.Zero, out surfaceHandle);
-			if(result != Result.Success)
-			{
-				ds.ErrorSpew("Window surface creation failed: " + result.ToString());
-				Glfw.DestroyWindow(mWnd);
-				Glfw.Terminate();
-				return;
-			}
-
-			AllocationCallbacks?	superAnnoyingParameter	=null;
-
-			mSurface	=new SurfaceKhr(ds.GetInstance().GetInstance(),
-				ref superAnnoyingParameter, surfaceHandle.ToInt64());
+			ds.CreateWindowSurface(mWnd);
 
 			mLastFrame	=Stopwatch.GetTimestamp();
 		}
@@ -138,12 +121,6 @@ namespace DrunkSpock
 		{
 			mUpdateTicMS	=updateTic;
 			mRenderTicMS	=renderTic;
-		}
-
-
-		public SurfaceKhr GetSurface()
-		{
-			return	mSurface;
 		}
 
 
@@ -205,7 +182,6 @@ namespace DrunkSpock
 
 		public void Destroy()
 		{
-			mSurface.Dispose();
 			Glfw.DestroyWindow(mWnd);
 			Glfw.Terminate();
 			bDestroyed	=true;

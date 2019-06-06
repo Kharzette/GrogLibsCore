@@ -24,6 +24,9 @@ namespace DrunkSpock
 		VulkanCore.Pipeline	mPipe;
 		RenderPass			mRenderPass;
 
+		Semaphore	mImageAvail;
+		Semaphore	mRenderFinished;
+
 		Framebuffer	[]mChainBuffers;
 
 		Dictionary<string, ShaderModule>	mShaders	=new Dictionary<string, ShaderModule>();
@@ -64,6 +67,69 @@ namespace DrunkSpock
 					new[] { chainImageViews[i] }, chainExtent.Width, chainExtent.Height, 1));
 			}
 			return	true;
+		}
+
+
+		public CommandBuffer[] GimmeCommandBuffer(string queueName)
+		{
+			CommandBufferAllocateInfo	cbai	=new CommandBufferAllocateInfo();
+
+			cbai.Level				=CommandBufferLevel.Primary;
+			cbai.CommandBufferCount	=mChainBuffers.Length;
+
+			CommandPool	cp	=mDevices.GetCommandPool(queueName);
+
+			return	cp.AllocateBuffers(cbai);
+		}
+
+
+		public void Destroy()
+		{
+			for(int i=0;i < mChainBuffers.Length;i++)
+			{
+				if(mChainBuffers[i] != null)
+				{
+					mChainBuffers[i].Dispose();
+				}
+			}
+		}
+
+
+		public void BeginBuffer(CommandBuffer cb,
+				int frameBufIndex, ClearValue cv)
+		{
+			CommandBufferBeginInfo	cbbi	=new CommandBufferBeginInfo();
+
+			cbbi.Flags	=CommandBufferUsages.SimultaneousUse;
+
+			cb.Begin(cbbi);
+
+			RenderPassBeginInfo	rpbi	=new RenderPassBeginInfo(
+				mChainBuffers[frameBufIndex],
+				new Rect2D(Offset2D.Zero, mDevices.GetChainExtent()), cv);
+
+			//rpbi.ClearValues	=cv;
+
+			cb.CmdBeginRenderPass(rpbi);
+
+			cb.CmdBindPipeline(PipelineBindPoint.Graphics, mPipe);
+		}
+
+
+		public void DrawStuffs(CommandBuffer []cBufs,
+			string graphicsQueueName, string presentQueueName)
+		{
+			int	imageIndex	=mDevices.AcquireNextImage(mImageAvail);
+
+			SubmitInfo	si	=new SubmitInfo();
+			si.WaitSemaphores	=new long[1] { mImageAvail.Handle };
+			si.WaitDstStageMask	=new PipelineStages[1] { PipelineStages.ColorAttachmentOutput };
+			si.CommandBuffers	=new IntPtr[1] { cBufs[imageIndex] };
+			si.SignalSemaphores	=new long[1] { mRenderFinished.Handle };
+
+			mDevices.SubmitToQueue(si, graphicsQueueName);
+
+			mDevices.QueuePresent(mRenderFinished, imageIndex, presentQueueName);
 		}
 
 
@@ -158,6 +224,9 @@ namespace DrunkSpock
 			gplci.BasePipelineIndex		=-1;
 
 			mPipe	=dv.CreateGraphicsPipeline(gplci);
+
+			mImageAvail		=dv.CreateSemaphore();
+			mRenderFinished	=dv.CreateSemaphore();
 
 			return	true;
 		}
