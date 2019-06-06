@@ -43,12 +43,36 @@ namespace DrunkSpock
 		//queue names
 		Dictionary<string, Queue>	mQueueNames		=new Dictionary<string, Queue>();
 
+		//swap chain stuff
+		Extent2D		mSwapExtent;
+		SwapchainKhr	mSwapChain;
+		ImageView		[]mChainImageViews;
+
 		internal event EventHandler	eErrorSpam;
 
 
 		public Devices(Instance inst, SurfaceKhr surf)
 		{
 			ExaminePhysicalDevices(inst, surf);			
+		}
+
+
+		//temporary?
+		public Device GetLogicalDevice(string name)
+		{
+			return	mLogicals[name];
+		}
+
+
+		internal ImageView	[]GetChainImageViews()
+		{
+			return	mChainImageViews;
+		}
+
+
+		public Extent2D GetChainExtent()
+		{
+			return	mSwapExtent;
 		}
 
 
@@ -178,7 +202,8 @@ namespace DrunkSpock
 		}
 
 
-		public bool CreateSwapChain(string logName, SurfaceKhr surf)
+		public bool CreateSwapChain(string logName, SurfaceKhr surf,
+			int extentX, int extentY)
 		{
 			Device			dv		=mLogicals[logName];
 			PhysicalDevice	phys	=dv.Parent;
@@ -193,22 +218,23 @@ namespace DrunkSpock
 				return	false;
 			}
 
-			Extent2D	chainExtent	=new Extent2D(1280, 720);
+			mSwapExtent	=new Extent2D(extentX, extentY);
 
 			SwapchainCreateInfoKhr	scci	=new SwapchainCreateInfoKhr(
-				surf, Format.B8G8R8A8UNorm, chainExtent,
+				surf, Format.B8G8R8A8UNorm, mSwapExtent,
 				surfCaps.MinImageCount, ColorSpaceKhr.SRgbNonlinear, 1,
 				ImageUsages.ColorAttachment);
 
-			SwapchainKhr	swapChain	=dv.CreateSwapchainKhr(scci);
-			if(swapChain == null)
+			mSwapChain	=dv.CreateSwapchainKhr(scci);
+			if(mSwapChain == null)
 			{
 				Misc.SafeInvoke(eErrorSpam, "Create swap chain failed...");
 				return	false;
 			}
 
-			VulkanCore.Image	[]chainImages		=swapChain.GetImages();
-			ImageView			[]chainImageViews	=new ImageView[chainImages.Length];
+			VulkanCore.Image	[]chainImages		=mSwapChain.GetImages();
+
+			mChainImageViews	=new ImageView[chainImages.Length];
 
 			for(int i=0;i < chainImages.Length;i++)
 			{
@@ -216,9 +242,9 @@ namespace DrunkSpock
 					ImageAspects.Color, 0, 1, 0, 1);
 
 				ImageViewCreateInfo	ivci	=new ImageViewCreateInfo(
-					swapChain.Format, isr);
+					mSwapChain.Format, isr);
 
-				chainImageViews[i]	=chainImages[i].CreateView(ivci);
+				mChainImageViews[i]	=chainImages[i].CreateView(ivci);
 			}
 			return	true;
 		}
