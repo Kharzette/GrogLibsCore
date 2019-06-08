@@ -19,31 +19,34 @@ namespace DrunkSpock
 	public class PipeLine
 	{
 		Devices	mDevices;
-		string	mDeviceName;
 
 		VulkanCore.Pipeline	mPipe;
 		RenderPass			mRenderPass;
 
-		Semaphore	mImageAvail;
-		Semaphore	mRenderFinished;
+		//synchro
+		List<Semaphore>	mImageAvail			=new List<Semaphore>();
+		List<Semaphore>	mRenderFinished		=new List<Semaphore>();
+		List<Fence>		mInFlight			=new List<Fence>();
+		int				mCurrentFrame		=0;
 
 		Framebuffer	[]mChainBuffers;
 
 		Dictionary<string, ShaderModule>	mShaders	=new Dictionary<string, ShaderModule>();
 
+		const int	MaxFramesInFlight	=2;
 
 
-		public PipeLine(Devices dvs, string deviceName)
+
+		public PipeLine(Devices dvs)
 		{
 			mDevices	=dvs;
-			mDeviceName	=deviceName;
 		}
 
 
 		public bool LoadShader(string filePath)
 		{
-			Device	dv	=mDevices.GetLogicalDevice(mDeviceName);
-			ShaderModule	sm	=Shaders.LoadShader(filePath, dv);
+			ShaderModule	sm	=Shaders.LoadShader(filePath,
+									mDevices.GetLogicalDevice());
 			if(sm != null)
 			{
 				mShaders.Add(filePath, sm);
@@ -83,7 +86,7 @@ namespace DrunkSpock
 		}
 
 
-		public void Destroy()
+		public void DestroySwapStuff()
 		{
 			for(int i=0;i < mChainBuffers.Length;i++)
 			{
@@ -92,6 +95,31 @@ namespace DrunkSpock
 					mChainBuffers[i].Dispose();
 				}
 			}
+
+			mPipe.Dispose();
+			mRenderPass.Dispose();
+		}
+
+
+		public void Destroy()
+		{
+			DestroySwapStuff();
+
+			foreach(Semaphore sem in mImageAvail)
+			{
+				sem.Dispose();
+			}
+			foreach(Semaphore sem in mRenderFinished)
+			{
+				sem.Dispose();
+			}
+			foreach(Fence f in mInFlight)
+			{
+				f.Dispose();
+			}
+			mImageAvail.Clear();
+			mRenderFinished.Clear();
+			mInFlight.Clear();
 		}
 
 
@@ -119,23 +147,44 @@ namespace DrunkSpock
 		public void DrawStuffs(CommandBuffer []cBufs,
 			string graphicsQueueName, string presentQueueName)
 		{
-			int	imageIndex	=mDevices.AcquireNextImage(mImageAvail);
+			int	imageIndex	=mDevices.AcquireNextImage(mImageAvail[mCurrentFrame]);
 
 			SubmitInfo	si	=new SubmitInfo();
-			si.WaitSemaphores	=new long[1] { mImageAvail.Handle };
+			si.WaitSemaphores	=new long[1] { mImageAvail[mCurrentFrame].Handle };
 			si.WaitDstStageMask	=new PipelineStages[1] { PipelineStages.ColorAttachmentOutput };
 			si.CommandBuffers	=new IntPtr[1] { cBufs[imageIndex] };
-			si.SignalSemaphores	=new long[1] { mRenderFinished.Handle };
+			si.SignalSemaphores	=new long[1] { mRenderFinished[mCurrentFrame].Handle };
 
-			mDevices.SubmitToQueue(si, graphicsQueueName);
+			mDevices.GetLogicalDevice().ResetFences(
+				new Fence[] { mInFlight[mCurrentFrame]});
 
-			mDevices.QueuePresent(mRenderFinished, imageIndex, presentQueueName);
+			mDevices.SubmitToQueue(si, graphicsQueueName, mInFlight[mCurrentFrame]);
+
+			mDevices.QueuePresent(mRenderFinished[mCurrentFrame], imageIndex, presentQueueName);
+
+			mCurrentFrame	=(mCurrentFrame + 1) % MaxFramesInFlight;
+		}
+
+
+		bool CreateSyncObjects()
+		{
+			Device	dv	=mDevices.GetLogicalDevice();
+
+			FenceCreateInfo	fci	=new FenceCreateInfo(FenceCreateFlags.Signaled);
+
+			for(int i=0;i < MaxFramesInFlight;i++)
+			{
+				mImageAvail.Add(dv.CreateSemaphore());
+				mRenderFinished.Add(dv.CreateSemaphore());
+				mInFlight.Add(dv.CreateFence(fci));
+			}
+			return	true;
 		}
 
 
 		public bool Create(string vsName, string fsName)
 		{
-			Device	dv	=mDevices.GetLogicalDevice(mDeviceName);
+			Device	dv	=mDevices.GetLogicalDevice();
 
 			PipelineShaderStageCreateInfo	plssciv	=new PipelineShaderStageCreateInfo(
 				ShaderStages.Vertex, mShaders[vsName], "main", null);
@@ -225,8 +274,7 @@ namespace DrunkSpock
 
 			mPipe	=dv.CreateGraphicsPipeline(gplci);
 
-			mImageAvail		=dv.CreateSemaphore();
-			mRenderFinished	=dv.CreateSemaphore();
+			CreateSyncObjects();
 
 			return	true;
 		}

@@ -17,6 +17,20 @@ namespace DrunkSpock
 {
 	public class GameWindow
 	{
+		public class ReSizeEventArgs : EventArgs
+		{
+			public IntPtr	mpWnd;
+			public int		mNewWidth, mNewHeight;
+
+
+			public ReSizeEventArgs(IntPtr pWnd, int w, int h)
+			{
+				mpWnd		=pWnd;
+				mNewWidth	=w;
+				mNewHeight	=h;
+			}
+		};
+
 		Window		mWnd;
 
 		Input	mAttachedInput;
@@ -32,6 +46,7 @@ namespace DrunkSpock
 		public event EventHandler	eGameTic;
 		public event EventHandler	eRenderTic;
 		public event EventHandler	eWindowClosing;
+		public event EventHandler	eReSize;
 
 
 		public GameWindow(DrunkSpock ds, bool bResizable, string title,
@@ -113,7 +128,21 @@ namespace DrunkSpock
 
 			ds.CreateWindowSurface(mWnd);
 
+			Glfw.SetWindowSizeCallback(mWnd, OnReSize);
+
 			mLastFrame	=Stopwatch.GetTimestamp();
+		}
+
+
+		void OnReSize(IntPtr window, int width, int height)
+		{
+			Misc.SafeInvoke(eReSize, null, new ReSizeEventArgs(window, width, height));
+		}
+
+
+		public void GetWindowSize(out int width, out int height)
+		{
+			Glfw.GetWindowSize(mWnd, out width, out height);
 		}
 
 
@@ -154,7 +183,7 @@ namespace DrunkSpock
 				Misc.SafeInvoke(eGameTic, deltaTime);
 				mGameAccum	=0;
 			}
-			if(mRenderAccum > mRenderTicMS)
+			if(mRenderAccum > mRenderTicMS && !bDestroyed)
 			{
 				Nullable<long>	deltaTime	=mRenderAccum;
 				Misc.SafeInvoke(eRenderTic, null);

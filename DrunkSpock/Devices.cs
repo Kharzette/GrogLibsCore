@@ -20,8 +20,8 @@ namespace DrunkSpock
 		//physical devices
 		List<PhysicalDevice>	mPhysicals	=new List<PhysicalDevice>();
 
-		//created logical devices
-		Dictionary<string, Device>	mLogicals	=new Dictionary<string, Device>();
+		//created logical device
+		Device	mLogical;
 
 		//physical device data
 		List<PhysicalDeviceProperties>	mDeviceProps			=new List<PhysicalDeviceProperties>();
@@ -51,7 +51,8 @@ namespace DrunkSpock
 		SwapchainKhr	mSwapChain;
 		ImageView		[]mChainImageViews;
 
-		internal event EventHandler	eErrorSpam;
+		internal event	EventHandler	eErrorSpam;
+		public event	EventHandler	eSwapChainOutOfDate;
 
 
 		public Devices(DrunkSpock spock)
@@ -82,42 +83,70 @@ namespace DrunkSpock
 			pik.Swapchains		=new long[1] { mSwapChain.Handle };
 			pik.ImageIndices	=new int[1] { imageIndex };
 
-			mQueueNames[presQueueName].PresentKhr(pik);
+			try
+			{
+				mQueueNames[presQueueName].PresentKhr(pik);
+			}
+			catch(VulkanException ex)
+			{
+				if(ex.Result == Result.ErrorOutOfDateKhr)
+				{
+					Misc.SafeInvoke(eSwapChainOutOfDate, null);
+				}
+			}
+		}
+
+
+		void DestroySwapChainStuff()
+		{
+			foreach(ImageView iv in mChainImageViews)
+			{
+				iv.Dispose();
+			}
+			mChainImageViews	=null;
+
+			mSwapChain.Dispose();
 		}
 
 
 		public void Destroy()
 		{
-			foreach(KeyValuePair<string, Device> dev in mLogicals)
+			DestroySwapChainStuff();
+
+			foreach(KeyValuePair<string, CommandPool> cp in mCommandPools)
 			{
-				dev.Value.Dispose();
+				cp.Value.Dispose();
 			}
-			mLogicals.Clear();	//queues are cleaned up automagically
+			mCommandPools.Clear();
+
+			//queues are cleaned up automagically
+			mLogical.Dispose();
 		}
 
 
-		internal void SubmitToQueue(SubmitInfo si, string queueName)
+		internal void SubmitToQueue(SubmitInfo si,
+			string queueName, Fence fence = null)
 		{
-			SubmitToQueue(new SubmitInfo[] { si }, queueName);
+			SubmitToQueue(new SubmitInfo[] { si }, queueName, fence);
 		}
 
 
-		public void WaitIdle(string deviceName)
+		public void WaitIdle()
 		{
-			mLogicals[deviceName].WaitIdle();
+			mLogical.WaitIdle();
 		}
 
 
-		internal void SubmitToQueue(SubmitInfo []sis, string queueName)
+		internal void SubmitToQueue(SubmitInfo []sis,
+			string queueName, Fence fence = null)
 		{
-			mQueueNames[queueName].Submit(sis);
+			mQueueNames[queueName].Submit(sis, fence);
 		}
 
 
-		//temporary?
-		public Device GetLogicalDevice(string name)
+		internal Device GetLogicalDevice()
 		{
-			return	mLogicals[name];
+			return	mLogical;
 		}
 
 
@@ -184,19 +213,14 @@ namespace DrunkSpock
 		}
 
 		
-		public bool CreateLogicalDevice(string name, int physIndex,
-			List<DeviceQueueCreateInfo> queues, List<string> extensions,
+		public bool CreateLogicalDevice(int physIndex,
+			List<DeviceQueueCreateInfo> queues,
+			List<string> extensions,
 			Nullable<PhysicalDeviceFeatures> features)
 		{
 			if(physIndex < 0 || physIndex >= mPhysicals.Count)
 			{
 				Misc.SafeInvoke(eErrorSpam, "Physical index out of range in CreateLogicalDevice()");
-				return	false;
-			}
-
-			if(mLogicals.ContainsKey(name))
-			{
-				Misc.SafeInvoke(eErrorSpam, "Logical device name: " + name + " already in use in CreateLogicalDevice()");
 				return	false;
 			}
 
@@ -212,32 +236,22 @@ namespace DrunkSpock
 				dci.EnabledFeatures	=features.Value;
 			}
 
-			Device	d	=mPhysicals[physIndex].CreateDevice(dci);
-
-			mLogicals.Add(name, d);
+			mLogical	=mPhysicals[physIndex].CreateDevice(dci);
 
 			return	true;
 		}
 
 
-		public bool SetQueueName(string logName, string qName,
+		public bool SetQueueName(string qName,
 			int	famIndex, int qIndex)
 		{
-			if(!mLogicals.ContainsKey(logName))
-			{
-				Misc.SafeInvoke(eErrorSpam, "Bad logical device name: " + logName + " in SetQueueName()");
-				return	false;
-			}
-
 			if(mQueueNames.ContainsKey(qName))
 			{
 				Misc.SafeInvoke(eErrorSpam, "Queue name already in use: " + qName + " in SetQueueName()");
 				return	false;
 			}
 
-			Device	dv	=mLogicals[logName];
-
-			int	physIndex	=mPhysicals.IndexOf(dv.Parent);
+			int	physIndex	=mPhysicals.IndexOf(mLogical.Parent);
 
 			if(famIndex < 0 || famIndex >= mDeviceQueueFamProps[physIndex].Length)
 			{
@@ -251,24 +265,23 @@ namespace DrunkSpock
 				return	false;
 			}
 
-			Queue	q	=dv.GetQueue(famIndex, qIndex);
+			Queue	q	=mLogical.GetQueue(famIndex, qIndex);
 
 			mQueueNames.Add(qName, q);
 
 			//make a command pool for this queue
 			CommandPoolCreateInfo	cpci	=new CommandPoolCreateInfo(
 				famIndex, CommandPoolCreateFlags.None);
-			mCommandPools.Add(qName, dv.CreateCommandPool(cpci));
+			mCommandPools.Add(qName, mLogical.CreateCommandPool(cpci));
 
 			return	true;
 		}
 
 
-		public bool CreateSwapChain(string logName, DrunkSpock spock,
+		public bool CreateSwapChain(DrunkSpock spock,
 			int extentX, int extentY)
 		{
-			Device			dv		=mLogicals[logName];
-			PhysicalDevice	phys	=dv.Parent;
+			PhysicalDevice	phys	=mLogical.Parent;
 			SurfaceKhr		surf	=spock.GetSurface();
 
 			SurfaceCapabilitiesKhr	surfCaps		=phys.GetSurfaceCapabilitiesKhr(surf);
@@ -288,14 +301,14 @@ namespace DrunkSpock
 				surfCaps.MinImageCount, ColorSpaceKhr.SRgbNonlinear, 1,
 				ImageUsages.ColorAttachment);
 
-			mSwapChain	=dv.CreateSwapchainKhr(scci);
+			mSwapChain	=mLogical.CreateSwapchainKhr(scci);
 			if(mSwapChain == null)
 			{
 				Misc.SafeInvoke(eErrorSpam, "Create swap chain failed...");
 				return	false;
 			}
 
-			VulkanCore.Image	[]chainImages		=mSwapChain.GetImages();
+			VulkanCore.Image	[]chainImages	=mSwapChain.GetImages();
 
 			mChainImageViews	=new ImageView[chainImages.Length];
 
