@@ -309,6 +309,11 @@ namespace DrunkSpock
 
 			scci.ImageSharingMode	=SharingMode.Exclusive;
 
+			if(presModes.Contains(PresentModeKhr.Mailbox))
+			{
+				scci.PresentMode	=PresentModeKhr.Mailbox;
+			}
+
 			mSwapChain	=mLogical.CreateSwapchainKhr(scci);
 			if(mSwapChain == null)
 			{
