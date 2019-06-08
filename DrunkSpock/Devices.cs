@@ -307,6 +307,8 @@ namespace DrunkSpock
 				imageCount, ColorSpaceKhr.SRgbNonlinear, 1,
 				ImageUsages.ColorAttachment);
 
+			scci.ImageSharingMode	=SharingMode.Exclusive;
+
 			mSwapChain	=mLogical.CreateSwapchainKhr(scci);
 			if(mSwapChain == null)
 			{
