@@ -35,7 +35,7 @@ namespace DrunkSpock
 
 		Input	mAttachedInput;
 
-		bool	bDestroyed;
+		bool	mbDestroyed, mbMinimized;
 
 		//timings
 		long	mLastFrame;
@@ -134,6 +134,12 @@ namespace DrunkSpock
 		}
 
 
+		public void SetMinimized(bool bMin)
+		{
+			mbMinimized	=bMin;
+		}
+
+
 		void OnReSize(IntPtr window, int width, int height)
 		{
 			Misc.SafeInvoke(eReSize, null, new ReSizeEventArgs(window, width, height));
@@ -156,11 +162,15 @@ namespace DrunkSpock
 		//return true to quit
 		public bool GameLoop()
 		{
-			if(bDestroyed)
+			if(mbDestroyed)
 			{
 				return	true;
 			}
 			Glfw.PollEvents();
+			if(mbMinimized)
+			{
+				return	false;
+			}
 
 			if(Glfw.WindowShouldClose(mWnd))
 			{
@@ -183,7 +193,7 @@ namespace DrunkSpock
 				Misc.SafeInvoke(eGameTic, deltaTime);
 				mGameAccum	=0;
 			}
-			if(mRenderAccum > mRenderTicMS && !bDestroyed)
+			if(mRenderAccum > mRenderTicMS && !mbDestroyed)
 			{
 				Nullable<long>	deltaTime	=mRenderAccum;
 				Misc.SafeInvoke(eRenderTic, null);
@@ -213,7 +223,7 @@ namespace DrunkSpock
 		{
 			Glfw.DestroyWindow(mWnd);
 			Glfw.Terminate();
-			bDestroyed	=true;
+			mbDestroyed	=true;
 		}
 
 
