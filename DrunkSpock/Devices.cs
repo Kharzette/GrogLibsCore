@@ -296,9 +296,15 @@ namespace DrunkSpock
 
 			mSwapExtent	=new Extent2D(extentX, extentY);
 
+			int	imageCount	=surfCaps.MinImageCount + 1;
+			if(surfCaps.MaxImageCount > 0 && imageCount > surfCaps.MaxImageCount)
+			{
+				imageCount	=surfCaps.MaxImageCount;
+			}
+
 			SwapchainCreateInfoKhr	scci	=new SwapchainCreateInfoKhr(
 				surf, Format.B8G8R8A8UNorm, mSwapExtent,
-				surfCaps.MinImageCount, ColorSpaceKhr.SRgbNonlinear, 1,
+				imageCount, ColorSpaceKhr.SRgbNonlinear, 1,
 				ImageUsages.ColorAttachment);
 
 			mSwapChain	=mLogical.CreateSwapchainKhr(scci);
