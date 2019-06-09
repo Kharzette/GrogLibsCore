@@ -9,8 +9,9 @@ using VulkanCore;
 using VulkanCore.Ext;
 using VulkanCore.Khr;
 
-using VER	=VulkanCore.Version;
-using INST	=VulkanCore.Instance;
+using VER		=VulkanCore.Version;
+using INST		=VulkanCore.Instance;
+using Buffer	=VulkanCore.Buffer;
 
 
 namespace DrunkSpock
@@ -22,6 +23,10 @@ namespace DrunkSpock
 
 		//created logical device
 		Device	mLogical;
+
+		//bufferstuff
+		Dictionary<string, Buffer>			mVertBuffers	=new Dictionary<string, VulkanCore.Buffer>();
+		Dictionary<string, DeviceMemory>	mVertMem		=new Dictionary<string, DeviceMemory>();
 
 		//physical device data
 		List<PhysicalDeviceProperties>	mDeviceProps			=new List<PhysicalDeviceProperties>();
@@ -112,6 +117,18 @@ namespace DrunkSpock
 		public void Destroy()
 		{
 			DestroySwapChainStuff();
+
+			foreach(KeyValuePair<string, Buffer> bufs in mVertBuffers)
+			{
+				bufs.Value.Dispose();
+			}
+			mVertBuffers.Clear();
+
+			foreach(KeyValuePair<string, DeviceMemory> mem in mVertMem)
+			{
+				mem.Value.Dispose();
+			}
+			mVertMem.Clear();
 
 			foreach(KeyValuePair<string, CommandPool> cp in mCommandPools)
 			{
@@ -336,6 +353,68 @@ namespace DrunkSpock
 				mChainImageViews[i]	=chainImages[i].CreateView(ivci);
 			}
 			return	true;
+		}
+
+
+		public void CreateVertexBuffer(int sizeInBytes, string name)
+		{
+			BufferCreateInfo	bci	=new BufferCreateInfo(sizeInBytes,
+				BufferUsages.VertexBuffer, BufferCreateFlags.None,
+				SharingMode.Exclusive, null);
+
+			Buffer	buf	=mLogical.CreateBuffer(bci);
+
+			mVertBuffers.Add(name, buf);
+		}
+
+
+		public void CopyStuffIntoBuffer<T>(string bufName, T[] stuff) where T : struct
+		{
+			Buffer	buf	=mVertBuffers[bufName];
+
+			DeviceMemory	dm;
+			if(!mVertMem.ContainsKey(bufName))
+			{
+				MemoryRequirements	mr	=buf.GetMemoryRequirements();
+
+				MemoryAllocateInfo	mai	=new MemoryAllocateInfo();
+				mai.AllocationSize		=mr.Size;
+				mai.MemoryTypeIndex		=FindMemoryType(mr.MemoryTypeBits,
+					MemoryProperties.HostVisible | MemoryProperties.HostCoherent);
+
+				dm	=mLogical.AllocateMemory(mai);
+
+				mVertMem.Add(bufName, dm);
+			}
+			else
+			{
+				dm	=mVertMem[bufName];
+			}
+
+            long	size	=stuff.Length * Interop.SizeOf<T>();
+
+			IntPtr	pVBMem	=dm.Map(0, size);
+
+			Interop.Write(pVBMem, stuff);
+
+			dm.Unmap();
+
+			buf.BindMemory(dm);
+		}
+
+
+		public void BindVB(CommandBuffer cb, string name)
+		{
+			cb.CmdBindVertexBuffer(mVertBuffers[name]);
+		}
+
+
+		//from the vulkan tutorial
+		int	FindMemoryType(int typeFilter, MemoryProperties memProps)
+		{
+			PhysicalDeviceMemoryProperties	pdmp	=mLogical.Parent.GetMemoryProperties();
+
+			return	pdmp.MemoryTypes.IndexOf(typeFilter, memProps);
 		}
 
 
