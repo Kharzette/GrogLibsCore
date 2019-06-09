@@ -182,7 +182,9 @@ namespace DrunkSpock
 		}
 
 
-		public bool Create(string vsName, string fsName)
+		public bool Create(string vsName, string fsName,
+			VertexInputBindingDescription []vbind,
+			VertexInputAttributeDescription []vatts)
 		{
 			Device	dv	=mDevices.GetLogicalDevice();
 
@@ -193,7 +195,7 @@ namespace DrunkSpock
 				ShaderStages.Fragment, mShaders[fsName], "main", null);
 
 			PipelineVertexInputStateCreateInfo	plvisci	=new PipelineVertexInputStateCreateInfo(
-				null, null);
+				vbind, vatts);
 
 			PipelineInputAssemblyStateCreateInfo	pliasci	=new PipelineInputAssemblyStateCreateInfo(
 				PrimitiveTopology.TriangleList);
