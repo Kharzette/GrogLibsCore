@@ -25,8 +25,8 @@ namespace DrunkSpock
 		Device	mLogical;
 
 		//bufferstuff
-		Dictionary<string, Buffer>			mVertBuffers	=new Dictionary<string, VulkanCore.Buffer>();
-		Dictionary<string, DeviceMemory>	mVertMem		=new Dictionary<string, DeviceMemory>();
+		Dictionary<string, Buffer>			mBuffers	=new Dictionary<string, VulkanCore.Buffer>();
+		Dictionary<string, DeviceMemory>	mDeviceMems		=new Dictionary<string, DeviceMemory>();
 
 		//physical device data
 		List<PhysicalDeviceProperties>	mDeviceProps			=new List<PhysicalDeviceProperties>();
@@ -118,17 +118,17 @@ namespace DrunkSpock
 		{
 			DestroySwapChainStuff();
 
-			foreach(KeyValuePair<string, Buffer> bufs in mVertBuffers)
+			foreach(KeyValuePair<string, Buffer> bufs in mBuffers)
 			{
 				bufs.Value.Dispose();
 			}
-			mVertBuffers.Clear();
+			mBuffers.Clear();
 
-			foreach(KeyValuePair<string, DeviceMemory> mem in mVertMem)
+			foreach(KeyValuePair<string, DeviceMemory> mem in mDeviceMems)
 			{
 				mem.Value.Dispose();
 			}
-			mVertMem.Clear();
+			mDeviceMems.Clear();
 
 			foreach(KeyValuePair<string, CommandPool> cp in mCommandPools)
 			{
@@ -213,20 +213,181 @@ namespace DrunkSpock
 		}
 
 
+		bool bQueueIndexIn(Queues qType, int physIndex, int theIndex)
+		{
+			if(qType == Queues.Compute)
+			{
+				if(mComputeIndexes.ContainsKey(physIndex))
+				{
+					return	mComputeIndexes[physIndex].Contains(theIndex);
+				}
+			}
+			if(qType == Queues.Graphics)
+			{
+				if(mGraphicsIndexes.ContainsKey(physIndex))
+				{
+					return	mGraphicsIndexes[physIndex].Contains(theIndex);
+				}
+			}
+			if(qType == Queues.SparseBinding)
+			{
+				if(mSparseIndexes.ContainsKey(physIndex))
+				{
+					return	mSparseIndexes[physIndex].Contains(theIndex);
+				}
+			}
+			if(qType == Queues.Transfer)
+			{
+				if(mTransferIndexes.ContainsKey(physIndex))
+				{
+					return	mTransferIndexes[physIndex].Contains(theIndex);
+				}
+			}
+			return	false;
+		}
+
+
+		public int GetExclusiveFamilyIndex(Queues qType, int physIndex)
+		{
+			Dictionary<int, List<int>>	qIndexes	=null;
+
+			List<Queues>	otherThree	=new List<Queues>();
+
+			if(qType == Queues.Compute)
+			{
+				qIndexes	=mComputeIndexes;
+				otherThree.Add(Queues.Graphics);
+				otherThree.Add(Queues.SparseBinding);
+				otherThree.Add(Queues.Transfer);
+			}
+			else if(qType == Queues.Graphics)
+			{
+				qIndexes	=mGraphicsIndexes;
+				otherThree.Add(Queues.Compute);
+				otherThree.Add(Queues.SparseBinding);
+				otherThree.Add(Queues.Transfer);
+			}
+			else if(qType == Queues.SparseBinding)
+			{
+				qIndexes	=mSparseIndexes;
+				otherThree.Add(Queues.Compute);
+				otherThree.Add(Queues.Graphics);
+				otherThree.Add(Queues.Transfer);
+			}
+			else if(qType == Queues.Transfer)
+			{
+				qIndexes	=mTransferIndexes;
+				otherThree.Add(Queues.Compute);
+				otherThree.Add(Queues.SparseBinding);
+				otherThree.Add(Queues.Graphics);
+			}
+
+			if(!qIndexes.ContainsKey(physIndex))
+			{
+				return	-1;
+			}
+
+			foreach(int i in qIndexes[physIndex])
+			{
+				if(bQueueIndexIn(otherThree[0], physIndex, i))
+				{
+					continue;
+				}
+				else if(bQueueIndexIn(otherThree[1], physIndex, i))
+				{
+					continue;
+				}
+				else if(bQueueIndexIn(otherThree[2], physIndex, i))
+				{
+					continue;
+				}
+				return	i;
+			}
+			return	-1;
+		}
+
+
 		public List<int> GetFamilyIndexesFor(Queues qTypes, int physIndex)
 		{
-			switch(qTypes)
+			if(qTypes == Queues.Compute)
 			{
-				case	Queues.Compute:
+				if(mComputeIndexes.ContainsKey(physIndex))
+				{
 					return	mComputeIndexes[physIndex];
-				case	Queues.Graphics:
-					return	mGraphicsIndexes[physIndex];
-				case	Queues.SparseBinding:
-					return	mSparseIndexes[physIndex];
-				case	Queues.Transfer:
-					return	mTransferIndexes[physIndex];
+				}
 			}
+			if(qTypes == Queues.Graphics)
+			{
+				if(mGraphicsIndexes.ContainsKey(physIndex))
+				{
+					return	mGraphicsIndexes[physIndex];
+				}
+			}
+			if(qTypes == Queues.SparseBinding)
+			{
+				if(mSparseIndexes.ContainsKey(physIndex))
+				{
+					return	mSparseIndexes[physIndex];
+				}
+			}
+			if(qTypes == Queues.Transfer)
+			{
+				if(mTransferIndexes.ContainsKey(physIndex))
+				{
+					return	mTransferIndexes[physIndex];
+				}
+			}
+
 			return	null;
+		}
+
+
+		public void CopyBuffer(string queue,
+			string src, string dest, int size)
+		{
+			if(!mBuffers.ContainsKey(src))
+			{
+				Misc.SafeInvoke(eErrorSpam, "No buffer named: " + src + "...");
+				return;
+			}
+			if(!mBuffers.ContainsKey(dest))
+			{
+				Misc.SafeInvoke(eErrorSpam, "No buffer named: " + dest + "...");
+				return;
+			}
+			if(!mCommandPools.ContainsKey(queue))
+			{
+				Misc.SafeInvoke(eErrorSpam, "No pool named: " + queue + "...");
+				return;
+			}
+
+			CommandBufferAllocateInfo	cbai	=new CommandBufferAllocateInfo();
+
+			cbai.Level				=CommandBufferLevel.Primary;
+			cbai.CommandBufferCount	=1;
+
+			CommandBuffer	[]bufs	=mCommandPools[queue].AllocateBuffers(cbai);
+
+			CommandBufferBeginInfo	cbbi	=new CommandBufferBeginInfo(
+				CommandBufferUsages.OneTimeSubmit);
+
+			bufs[0].Begin(cbbi);
+
+			BufferCopy	bc	=new BufferCopy(size, 0, 0);
+
+			bufs[0].CmdCopyBuffer(mBuffers[src], mBuffers[dest], bc);
+
+			bufs[0].End();
+
+			SubmitInfo	si	=new SubmitInfo();
+
+			si.CommandBuffers	=new IntPtr[] { bufs[0].Handle };
+
+			SubmitToQueue(si, queue, null);
+
+			mQueueNames[queue].WaitIdle();
+
+			bufs[0].Dispose();
 		}
 
 		
@@ -260,7 +421,7 @@ namespace DrunkSpock
 
 
 		public bool SetQueueName(string qName,
-			int	famIndex, int qIndex)
+			int	famIndex, int qIndex, CommandPoolCreateFlags poolFlags)
 		{
 			if(mQueueNames.ContainsKey(qName))
 			{
@@ -288,7 +449,7 @@ namespace DrunkSpock
 
 			//make a command pool for this queue
 			CommandPoolCreateInfo	cpci	=new CommandPoolCreateInfo(
-				famIndex, CommandPoolCreateFlags.None);
+				famIndex, poolFlags);
 			mCommandPools.Add(qName, mLogical.CreateCommandPool(cpci));
 
 			return	true;
@@ -356,40 +517,50 @@ namespace DrunkSpock
 		}
 
 
-		public void CreateVertexBuffer(int sizeInBytes, string name)
+		public void CreateBuffer(int sizeInBytes, string name,
+			BufferUsages usage, SharingMode sm, int []famIndexes = null)
 		{
 			BufferCreateInfo	bci	=new BufferCreateInfo(sizeInBytes,
-				BufferUsages.VertexBuffer, BufferCreateFlags.None,
-				SharingMode.Exclusive, null);
+				usage, BufferCreateFlags.None,
+				sm, famIndexes);
 
 			Buffer	buf	=mLogical.CreateBuffer(bci);
 
-			mVertBuffers.Add(name, buf);
+			mBuffers.Add(name, buf);
 		}
 
 
-		public void CopyStuffIntoBuffer<T>(string bufName, T[] stuff) where T : struct
+		public void CreateBufferMemory<T>(string bufName, MemoryProperties props)
 		{
-			Buffer	buf	=mVertBuffers[bufName];
+			if(mDeviceMems.ContainsKey(bufName))
+			{
+				Misc.SafeInvoke(eErrorSpam, "Buffer " + bufName + " already has a chunk of mem allocated...");
+				return;
+			}
+			Buffer	buf	=mBuffers[bufName];
 
 			DeviceMemory	dm;
-			if(!mVertMem.ContainsKey(bufName))
+			MemoryRequirements	mr	=buf.GetMemoryRequirements();
+
+			MemoryAllocateInfo	mai	=new MemoryAllocateInfo();
+			mai.AllocationSize		=mr.Size;
+			mai.MemoryTypeIndex		=FindMemoryType(mr.MemoryTypeBits, props);
+
+			dm	=mLogical.AllocateMemory(mai);
+
+			mDeviceMems.Add(bufName, dm);
+		}
+
+
+		public void CopyStuffIntoMemory<T>(string memName, T[] stuff) where T : struct
+		{
+			if(!mDeviceMems.ContainsKey(memName))
 			{
-				MemoryRequirements	mr	=buf.GetMemoryRequirements();
-
-				MemoryAllocateInfo	mai	=new MemoryAllocateInfo();
-				mai.AllocationSize		=mr.Size;
-				mai.MemoryTypeIndex		=FindMemoryType(mr.MemoryTypeBits,
-					MemoryProperties.HostVisible | MemoryProperties.HostCoherent);
-
-				dm	=mLogical.AllocateMemory(mai);
-
-				mVertMem.Add(bufName, dm);
+				Misc.SafeInvoke(eErrorSpam, "No memory chunk " + memName + "...");
+				return;
 			}
-			else
-			{
-				dm	=mVertMem[bufName];
-			}
+
+			DeviceMemory	dm	=mDeviceMems[memName];
 
             long	size	=stuff.Length * Interop.SizeOf<T>();
 
@@ -398,6 +569,24 @@ namespace DrunkSpock
 			Interop.Write(pVBMem, stuff);
 
 			dm.Unmap();
+		}
+
+
+		public void BindMemoryToBuffer(string memName, string bufName)
+		{
+			if(!mDeviceMems.ContainsKey(memName))
+			{
+				Misc.SafeInvoke(eErrorSpam, "No memory chunk " + memName + "...");
+				return;
+			}
+			if(!mBuffers.ContainsKey(memName))
+			{
+				Misc.SafeInvoke(eErrorSpam, "No buffer " + bufName + "...");
+				return;
+			}
+
+			Buffer			buf	=mBuffers[bufName];
+			DeviceMemory	dm	=mDeviceMems[bufName];
 
 			buf.BindMemory(dm);
 		}
@@ -405,7 +594,7 @@ namespace DrunkSpock
 
 		public void BindVB(CommandBuffer cb, string name)
 		{
-			cb.CmdBindVertexBuffer(mVertBuffers[name]);
+			cb.CmdBindVertexBuffer(mBuffers[name]);
 		}
 
 

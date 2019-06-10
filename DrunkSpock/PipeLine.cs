@@ -73,7 +73,7 @@ namespace DrunkSpock
 		}
 
 
-		public CommandBuffer[] GimmeCommandBuffer(string queueName)
+		public CommandBuffer[] GimmeCommandBuffers(string queueName)
 		{
 			CommandBufferAllocateInfo	cbai	=new CommandBufferAllocateInfo();
 
