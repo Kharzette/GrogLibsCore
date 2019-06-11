@@ -106,7 +106,19 @@ namespace DrunkSpock
 		}
 
 
-		void DestroySwapChainStuff()
+		public void DestroyBuffer(string name)
+		{
+			if(!mBuffers.ContainsKey(name))
+			{
+				return;
+			}
+
+			mBuffers[name].Dispose();
+			mBuffers.Remove(name);
+		}
+
+
+		public void DestroySwapChainStuff()
 		{
 			foreach(ImageView iv in mChainImageViews)
 			{
