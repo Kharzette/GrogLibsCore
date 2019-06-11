@@ -221,9 +221,9 @@ namespace DrunkSpock
 
 		public void Destroy()
 		{
+			mbDestroyed	=true;
 			Glfw.DestroyWindow(mWnd);
 			Glfw.Terminate();
-			mbDestroyed	=true;
 		}
 
 

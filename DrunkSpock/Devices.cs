@@ -26,7 +26,11 @@ namespace DrunkSpock
 
 		//bufferstuff
 		Dictionary<string, Buffer>			mBuffers	=new Dictionary<string, VulkanCore.Buffer>();
-		Dictionary<string, DeviceMemory>	mDeviceMems		=new Dictionary<string, DeviceMemory>();
+		Dictionary<string, DeviceMemory>	mDeviceMems	=new Dictionary<string, DeviceMemory>();
+
+		DescriptorSetLayout	[]mDSLs;
+		DescriptorPool		mDPool;
+		DescriptorSet		[]mDSets;
 
 		//physical device data
 		List<PhysicalDeviceProperties>	mDeviceProps			=new List<PhysicalDeviceProperties>();
@@ -83,10 +87,10 @@ namespace DrunkSpock
 		internal void QueuePresent(Semaphore sem,
 				int imageIndex, string presQueueName)
 		{
-			PresentInfoKhr	pik	=new PresentInfoKhr();
-			pik.WaitSemaphores	=new long[1] { sem.Handle };
-			pik.Swapchains		=new long[1] { mSwapChain.Handle };
-			pik.ImageIndices	=new int[1] { imageIndex };
+			PresentInfoKhr	pik	=new PresentInfoKhr(
+				new Semaphore[] { sem },
+				new SwapchainKhr[] { mSwapChain },
+				new int[1] { imageIndex });
 
 			try
 			{
@@ -109,6 +113,8 @@ namespace DrunkSpock
 				iv.Dispose();
 			}
 			mChainImageViews	=null;
+
+			mDPool.Dispose();
 
 			mSwapChain.Dispose();
 		}
@@ -135,6 +141,12 @@ namespace DrunkSpock
 				cp.Value.Dispose();
 			}
 			mCommandPools.Clear();
+
+			foreach(DescriptorSetLayout dsl in mDSLs)
+			{
+				dsl.Dispose();
+			}
+			mDSLs	=null;
 
 			//queues are cleaned up automagically
 			mLogical.Dispose();
@@ -513,6 +525,18 @@ namespace DrunkSpock
 
 				mChainImageViews[i]	=chainImages[i].CreateView(ivci);
 			}
+
+			//descriptor pool stuff
+			DescriptorPoolSize	dps	=new DescriptorPoolSize(
+				DescriptorType.UniformBuffer, chainImages.Length);
+			
+			DescriptorPoolCreateInfo	dpci	=new DescriptorPoolCreateInfo();
+
+			dpci.PoolSizes	=new DescriptorPoolSize[] { dps };
+			dpci.MaxSets	=chainImages.Length;
+
+			mDPool	=mLogical.CreateDescriptorPool(dpci);
+
 			return	true;
 		}
 
@@ -592,9 +616,75 @@ namespace DrunkSpock
 		}
 
 
+		public DescriptorSetLayout	[]GetDSLs()
+		{
+			return	mDSLs;
+		}
+
+
+		public void CreateDescriptorLayout()
+		{
+			DescriptorSetLayoutBinding	dslb	=new DescriptorSetLayoutBinding();
+
+			dslb.Binding			=0;
+			dslb.DescriptorType		=DescriptorType.UniformBuffer;
+			dslb.DescriptorCount	=1;
+			dslb.StageFlags			=ShaderStages.Vertex;
+
+			DescriptorSetLayoutCreateInfo	dslci	=new DescriptorSetLayoutCreateInfo();
+
+			dslci.Bindings	=new DescriptorSetLayoutBinding[] { dslb };
+
+			mDSLs	=new DescriptorSetLayout[mChainImageViews.Length];
+
+			for(int i=0;i < mChainImageViews.Length;i++)
+			{
+				mDSLs[i]	=mLogical.CreateDescriptorSetLayout(dslci);
+			}
+		}
+
+
+		public void CreateDesriptorSets(string bufName, int size)
+		{
+			DescriptorSetAllocateInfo	dsai	=new DescriptorSetAllocateInfo(
+				mChainImageViews.Length, mDSLs);
+
+			mDSets	=mDPool.AllocateSets(dsai);
+
+			for(int i=0;i < mChainImageViews.Length;i++)
+			{
+				DescriptorBufferInfo	dbi	=new DescriptorBufferInfo();
+
+				dbi.Buffer	=mBuffers[bufName + i];
+				dbi.Range	=size;
+
+				WriteDescriptorSet	wds	=new WriteDescriptorSet();
+
+				wds.DstSet			=mDSets[i];
+				wds.DescriptorType	=DescriptorType.UniformBuffer;
+				wds.DescriptorCount	=1;
+				wds.BufferInfo		=new DescriptorBufferInfo[] { dbi };
+
+				mDPool.UpdateSets(new WriteDescriptorSet[] { wds });
+			}
+		}
+
+
+		internal DescriptorSet GetDescriptorSets(int index)
+		{
+			return	mDSets[index];
+		}
+
+
 		public void BindVB(CommandBuffer cb, string name)
 		{
 			cb.CmdBindVertexBuffer(mBuffers[name]);
+		}
+
+
+		public void BindIB(CommandBuffer cb, string name)
+		{
+			cb.CmdBindIndexBuffer(mBuffers[name], 0, IndexType.UInt16);
 		}
 
 

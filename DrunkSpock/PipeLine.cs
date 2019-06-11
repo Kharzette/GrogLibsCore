@@ -22,6 +22,7 @@ namespace DrunkSpock
 
 		VulkanCore.Pipeline	mPipe;
 		RenderPass			mRenderPass;
+		PipelineLayout		mPipeLayout;
 
 		//synchro
 		List<Semaphore>	mImageAvail			=new List<Semaphore>();
@@ -32,6 +33,8 @@ namespace DrunkSpock
 		Framebuffer	[]mChainBuffers;
 
 		Dictionary<string, ShaderModule>	mShaders	=new Dictionary<string, ShaderModule>();
+
+		public event EventHandler	eUpdateMVP;
 
 		const int	MaxFramesInFlight	=2;
 
@@ -149,11 +152,13 @@ namespace DrunkSpock
 		{
 			int	imageIndex	=mDevices.AcquireNextImage(mImageAvail[mCurrentFrame]);
 
-			SubmitInfo	si	=new SubmitInfo();
-			si.WaitSemaphores	=new long[1] { mImageAvail[mCurrentFrame].Handle };
-			si.WaitDstStageMask	=new PipelineStages[1] { PipelineStages.ColorAttachmentOutput };
-			si.CommandBuffers	=new IntPtr[1] { cBufs[imageIndex] };
-			si.SignalSemaphores	=new long[1] { mRenderFinished[mCurrentFrame].Handle };
+			Misc.SafeInvoke(eUpdateMVP, new Nullable<int>(imageIndex));
+
+			SubmitInfo	si	=new SubmitInfo(
+				new Semaphore[] { mImageAvail[mCurrentFrame] },
+				new PipelineStages[] { PipelineStages.ColorAttachmentOutput },
+				new CommandBuffer[] { cBufs[imageIndex] },
+				new Semaphore[] { mRenderFinished[mCurrentFrame] });
 
 			mDevices.GetLogicalDevice().ResetFences(
 				new Fence[] { mInFlight[mCurrentFrame]});
@@ -179,6 +184,13 @@ namespace DrunkSpock
 				mInFlight.Add(dv.CreateFence(fci));
 			}
 			return	true;
+		}
+
+
+		public void BindDS(CommandBuffer cb, int index)
+		{
+			cb.CmdBindDescriptorSets(PipelineBindPoint.Graphics, mPipeLayout,
+				0, new DescriptorSet[] { mDevices.GetDescriptorSets(index) });
 		}
 
 
@@ -221,9 +233,10 @@ namespace DrunkSpock
 			plcbsci.Attachments		=new PipelineColorBlendAttachmentState[1] { plcbas };
 			plcbsci.BlendConstants	=ColorF4.Zero;
 
-			PipelineLayoutCreateInfo	pllci	=new PipelineLayoutCreateInfo();
+			PipelineLayoutCreateInfo	pllci	=new PipelineLayoutCreateInfo(
+				mDevices.GetDSLs());
 
-			PipelineLayout	pll	=dv.CreatePipelineLayout(pllci);
+			mPipeLayout	=dv.CreatePipelineLayout(pllci);
 
 			AttachmentDescription	ad	=new AttachmentDescription();
 
@@ -268,7 +281,7 @@ namespace DrunkSpock
 			gplci.DepthStencilState		=null;
 			gplci.ColorBlendState		=plcbsci;
 			gplci.DynamicState			=null;
-			gplci.Layout				=pll;
+			gplci.Layout				=mPipeLayout;
 			gplci.RenderPass			=mRenderPass;
 			gplci.Subpass				=0;
 			gplci.BasePipelineHandle	=null;
