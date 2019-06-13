@@ -11,7 +11,8 @@
 	<ProjectReference Include="../UtilityLib/UtilityLib.csproj"/>
 	<ProjectReference Include="../InputLib/InputLib.csproj"/>
     <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
-  </ItemGroup>
+    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-beta0006" />
+    </ItemGroup>
   <ItemGroup>
     <Content Include="Shaders/*.spv">
 	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

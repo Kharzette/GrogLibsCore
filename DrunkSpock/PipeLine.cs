@@ -108,6 +108,8 @@ namespace DrunkSpock
 		{
 			DestroySwapStuff();
 
+			mPipeLayout.Dispose();
+
 			foreach(Semaphore sem in mImageAvail)
 			{
 				sem.Dispose();
@@ -120,9 +122,14 @@ namespace DrunkSpock
 			{
 				f.Dispose();
 			}
+			foreach(KeyValuePair<string, ShaderModule> sm in mShaders)
+			{
+				sm.Value.Dispose();
+			}
 			mImageAvail.Clear();
 			mRenderFinished.Clear();
 			mInFlight.Clear();
+			mShaders.Clear();
 		}
 
 
@@ -150,6 +157,8 @@ namespace DrunkSpock
 		public void DrawStuffs(CommandBuffer []cBufs,
 			string graphicsQueueName, string presentQueueName)
 		{
+			mInFlight[mCurrentFrame].Wait();
+
 			int	imageIndex	=mDevices.AcquireNextImage(mImageAvail[mCurrentFrame]);
 
 			Misc.SafeInvoke(eUpdateMVP, new Nullable<int>(imageIndex));
@@ -175,10 +184,10 @@ namespace DrunkSpock
 		{
 			Device	dv	=mDevices.GetLogicalDevice();
 
-			FenceCreateInfo	fci	=new FenceCreateInfo(FenceCreateFlags.Signaled);
-
 			for(int i=0;i < MaxFramesInFlight;i++)
 			{
+				FenceCreateInfo	fci	=new FenceCreateInfo(FenceCreateFlags.Signaled);
+
 				mImageAvail.Add(dv.CreateSemaphore());
 				mRenderFinished.Add(dv.CreateSemaphore());
 				mInFlight.Add(dv.CreateFence(fci));
@@ -220,8 +229,10 @@ namespace DrunkSpock
 				new Viewport[1] { vp }, new Rect2D[1] { scissor });
 			
 			PipelineRasterizationStateCreateInfo	plrsci	=new PipelineRasterizationStateCreateInfo();
+			plrsci.LineWidth	=1;
 
 			PipelineMultisampleStateCreateInfo	plmssci	=new PipelineMultisampleStateCreateInfo();
+			plmssci.RasterizationSamples	=SampleCounts.Count1;
 
 			PipelineColorBlendAttachmentState	plcbas	=new PipelineColorBlendAttachmentState();
 			plcbas.ColorWriteMask	=ColorComponents.All;

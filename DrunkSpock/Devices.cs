@@ -418,7 +418,8 @@ namespace DrunkSpock
 		public bool CreateLogicalDevice(int physIndex,
 			List<DeviceQueueCreateInfo> queues,
 			List<string> extensions,
-			Nullable<PhysicalDeviceFeatures> features)
+			Nullable<PhysicalDeviceFeatures> features,
+			string []layerStuff)
 		{
 			if(physIndex < 0 || physIndex >= mPhysicals.Count)
 			{
@@ -437,6 +438,8 @@ namespace DrunkSpock
 			{
 				dci.EnabledFeatures	=features.Value;
 			}
+
+			dci.EnabledLayerNames	=layerStuff;
 
 			mLogical	=mPhysicals[physIndex].CreateDevice(dci);
 

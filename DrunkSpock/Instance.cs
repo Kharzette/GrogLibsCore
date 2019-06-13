@@ -92,7 +92,7 @@ namespace DrunkSpock
 			vlName			="";
 			foreach(LayerProperties lp in lps)
 			{
-				if(lp.Description.Contains("Standard Validation Layer"))
+				if(lp.Description.Contains("Standard Validation"))
 				{
 					bFound	=true;
 					vlName	=lp.LayerName;
