@@ -140,7 +140,7 @@ namespace DrunkSpock
 		}
 
 
-		void OnReSize(IntPtr window, int width, int height)
+		void OnReSize(Window window, int width, int height)
 		{
 			Misc.SafeInvoke(eReSize, null, new ReSizeEventArgs(window, width, height));
 		}
@@ -227,7 +227,7 @@ namespace DrunkSpock
 		}
 
 
-		void KeyCB(IntPtr window, Keys key, int scanCode,
+		void KeyCB(Window window, Keys key, int scanCode,
 			InputState state, ModifierKeys mods)
 		{
 /*			Console.WriteLine("wnd: " + window + ", key: " + key +
